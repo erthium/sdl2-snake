@@ -1,8 +1,28 @@
+// compiling with
+// g++ -I /usr/include/SDL2 -lSDL2 test.cpp -o test
+
 #include <iostream>
 #include <chrono>
 #include <thread>
+#include <SDL.h>
+#include <SDL_image.h>
+#include <SDL_timer.h>
 
-using namespace std;
+#define TICK_INTERVAL    30
+
+static Uint32 next_time;
+
+Uint32 time_left(void)
+{
+    Uint32 now;
+
+    now = SDL_GetTicks();
+    if(next_time <= now)
+        return 0;
+    else
+        return next_time - now;
+}
+
 
 class Game{
     private:
@@ -15,18 +35,23 @@ class Game{
         bool gameOver;
         bool restart;
         bool quit;
+
+        SDL_Window* window;
+        SDL_Renderer* renderer;
     public:
 
     public:
-        Game(){
-
+        Game(SDL_Window* _window, SDL_Renderer* _renderer){
+            window = _window;
+            renderer = _renderer;
+            std::cout << "Game started." << std::endl;
         }
 
         ~Game(){
-
+            std::cout << "Game finished." << std::endl;
         }
 
-        void createGame(int _width = 10, int _height = 10){
+        void createGame(int _width = 20, int _height = 20){
             width = _width;
             height = _height;
             gameOver = false;
@@ -126,21 +151,45 @@ class Game{
         }
 
         void loop(){
+            next_time = SDL_GetTicks() + TICK_INTERVAL;
             while(!quit){
-                if (gameOver){ cout << "Game Over!" << endl; }
+                if (gameOver){ std::cout << "Game Over!" << std::endl; }
                 else { gameOver = !moveSneak(); }
                 if (restart){ createGame(width, height); }
                 
-                this_thread::sleep_for(chrono::milliseconds(100));
+                SDL_RenderClear(renderer);
+                SDL_RenderPresent(renderer);
+
+                SDL_Delay(time_left());
+                next_time += TICK_INTERVAL;
             }
-            cout << "Closing the Game." << endl;
+            std::cout << "Closing the Game." << std::endl;
         }
 };
 
 
 int main()
 {
-    Game game;
+
+    if (SDL_Init(SDL_INIT_EVERYTHING) != 0) {
+        printf("error initializing SDL: %s\n", SDL_GetError());
+    }
+    SDL_Window* window = SDL_CreateWindow("Snake",
+                                       SDL_WINDOWPOS_CENTERED,
+                                       SDL_WINDOWPOS_CENTERED,
+                                       1000, 1000, 0);
+
+    SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, 0);
+    
+
+
+
+    /* Clean up on exit */
+    atexit(SDL_Quit);
+    
+    Game game(window, renderer);
     game.loop();
+
+    SDL_Quit();
     return 0;
 }
