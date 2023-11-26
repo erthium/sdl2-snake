@@ -8,7 +8,7 @@
 #include <SDL_image.h>
 #include <SDL_timer.h>
 
-#define TICK_INTERVAL    30
+#define TICK_INTERVAL 100
 
 static Uint32 next_time;
 
@@ -23,6 +23,8 @@ Uint32 time_left(void)
         return next_time - now;
 }
 
+#define WINDOW_WIDTH 1000
+#define WINDOW_HEIGHT 1000
 
 class Game{
     private:
@@ -35,20 +37,33 @@ class Game{
         bool gameOver;
         bool restart;
         bool quit;
+        bool pause;
 
-        SDL_Window* window;
-        SDL_Renderer* renderer;
+        SDL_Window* window = nullptr;
+        SDL_Renderer* renderer = nullptr;
     public:
 
     public:
-        Game(SDL_Window* _window, SDL_Renderer* _renderer){
-            window = _window;
-            renderer = _renderer;
-            std::cout << "Game started." << std::endl;
+        Game(){
+            if (SDL_Init(SDL_INIT_EVERYTHING) != 0) {
+                std::cout << "Error initializing SDL: " << SDL_GetError() << std::endl;
+            }
+            window = SDL_CreateWindow("Snake",
+                                                SDL_WINDOWPOS_CENTERED,
+                                                SDL_WINDOWPOS_CENTERED,
+                                                WINDOW_WIDTH, WINDOW_HEIGHT,
+                                                0);
+            if (window == NULL) { std::cout << "Window creation error: " << SDL_GetError() << std::endl;}
+            renderer = SDL_CreateRenderer(window, -1, 0);
+            if (renderer == NULL) { std::cout << "Renderer creation error: " << SDL_GetError() << std::endl;}
+            std::cout << "Game initialized." << std::endl;
         }
 
         ~Game(){
-            std::cout << "Game finished." << std::endl;
+            SDL_DestroyWindow(window);
+            SDL_DestroyRenderer(renderer);
+            SDL_Quit();
+            std::cout << "Game deconstructed." << std::endl;
         }
 
         void createGame(int _width = 20, int _height = 20){
@@ -89,6 +104,7 @@ class Game{
             for (int i = 1; i < snakeSize; i++){
                 if (snake[0][0] + directionVec[0] == snake[i][0] && snake[0][1] + directionVec[1] == snake[i][1]){
                     delete[] directionVec;
+                    std::cout << "Game Over!" << std::endl; 
                     return false;
                 }
             }
@@ -146,20 +162,112 @@ class Game{
             return vec;
         }
 
-        void showGame(){
+        void handleEvents(){
+            SDL_Event event;
+            while(SDL_PollEvent(&event)){
+                switch (event.type)
+                {
+                case SDL_QUIT:
+                    quit = true;
+                    break;
+                case SDL_KEYDOWN:
+                    switch (event.key.keysym.sym)
+                    {
+                    case SDLK_LEFT:
+                        snakeDirection = 0;
+                        break;
+                    case SDLK_a:
+                        snakeDirection = 0;
+                        break;
+                    case SDLK_UP:
+                        snakeDirection = 1;
+                        break;
+                    case SDLK_w:
+                        snakeDirection = 1;
+                        break;
+                    case SDLK_RIGHT:
+                        snakeDirection = 2;
+                        break;
+                    case SDLK_d:
+                        snakeDirection = 2;
+                        break;
+                    case SDLK_DOWN:
+                        snakeDirection = 3;
+                        break;
+                    case SDLK_s:
+                        snakeDirection = 3;
+                        break;
+                    case SDLK_r:
+                        restart = true;
+                        break;
+                    case SDLK_ESCAPE:
+                        pause = !pause;
+                        break;
+                    default:
+                        break;
+                    }
+                    break;
+                
+                default:
+                    break;
+                }
+            }
+
+        }
+
+        void renderGame(){
             
+            if (SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255) != 0)
+            {
+                std::cout << "Set renderer color error: " << SDL_GetError() << std::endl;
+            }
+            SDL_RenderClear(renderer);
+            int x_unit = WINDOW_WIDTH / width;
+            int y_unit = WINDOW_HEIGHT / height;
+
+            SDL_Rect rect;
+            rect.x = 0;
+            rect.y = 0;
+            rect.w = WINDOW_WIDTH;
+            rect.h = WINDOW_HEIGHT;
+            SDL_RenderFillRect(renderer, &rect);
+            // render the snake
+            SDL_SetRenderDrawColor(renderer, 255, 255, 0, 255);
+            for (int i = 0; i < snakeSize; i++){
+                rect.x = snake[i][0] * x_unit;
+                rect.y = snake[i][1] * y_unit;
+                rect.w = x_unit;
+                rect.h = y_unit;
+                SDL_RenderFillRect(renderer, &rect);
+            }
+            // render the berry
+            SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+            rect.x = berryX * x_unit;
+            rect.y = berryY * y_unit;
+            rect.w = x_unit;
+            rect.h = y_unit;
+            SDL_RenderFillRect(renderer, &rect);
+            // render the grid
+            SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+            for (int i = 0; i < width; i++)
+            {
+                SDL_RenderDrawLine(renderer, x_unit * i, 0, x_unit * i, WINDOW_HEIGHT);  
+            }
+            for (int i = 0; i < height; i++)
+            {
+                SDL_RenderDrawLine(renderer, 0, y_unit * i, WINDOW_WIDTH, y_unit * i);
+            }
+            SDL_RenderPresent(renderer);
         }
 
         void loop(){
             next_time = SDL_GetTicks() + TICK_INTERVAL;
             while(!quit){
-                if (gameOver){ std::cout << "Game Over!" << std::endl; }
-                else { gameOver = !moveSneak(); }
+                if(!pause && !gameOver){ gameOver = !moveSneak(); }
                 if (restart){ createGame(width, height); }
                 
-                SDL_RenderClear(renderer);
-                SDL_RenderPresent(renderer);
-
+                handleEvents();
+                renderGame();
                 SDL_Delay(time_left());
                 next_time += TICK_INTERVAL;
             }
@@ -167,29 +275,14 @@ class Game{
         }
 };
 
+Game *game = nullptr;
 
 int main()
-{
+{    
+    game = new Game();
+    game->createGame();
+    game->loop();
 
-    if (SDL_Init(SDL_INIT_EVERYTHING) != 0) {
-        printf("error initializing SDL: %s\n", SDL_GetError());
-    }
-    SDL_Window* window = SDL_CreateWindow("Snake",
-                                       SDL_WINDOWPOS_CENTERED,
-                                       SDL_WINDOWPOS_CENTERED,
-                                       1000, 1000, 0);
-
-    SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, 0);
-    
-
-
-
-    /* Clean up on exit */
-    atexit(SDL_Quit);
-    
-    Game game(window, renderer);
-    game.loop();
-
-    SDL_Quit();
+    delete game;
     return 0;
 }
