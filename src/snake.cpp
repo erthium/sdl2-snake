@@ -66,16 +66,22 @@ class Game{
             std::cout << "Game deconstructed." << std::endl;
         }
 
-        void createGame(int _width = 20, int _height = 20){
+        void createGame(int _width = 15, int _height = 15){
             width = _width;
             height = _height;
             gameOver = false;
             restart = false;
             // create the snake with the head and 2 bodu parts in a random position
-            snakeSize = 1;
+            snakeSize = 3;
             snake[0][0] = rand() % width;
             snake[0][1] = rand() % height;
             snakeDirection = rand() % 4;
+            int* dir = getDirectionVec();
+            snake[1][0] = snake[0][0] - dir[0];
+            snake[1][1] = snake[0][1] - dir[1];
+            snake[2][0] = snake[1][0] - dir[0];
+            snake[2][1] = snake[1][1] - dir[1];
+            delete[] dir;
             createBerry();
         }
 
@@ -99,6 +105,32 @@ class Game{
         bool moveSneak(){
             // every loop, move the snake according to the current direction
             int* directionVec = getDirectionVec();
+            
+            // move the head 
+            snake[0][0] += directionVec[0];
+            snake[0][1] += directionVec[1];
+
+            // if the head is over the grid, teleport it to the other side
+            if (snake[0][0] < 0) snake[0][0] = width - 1;
+            else if (snake[0][0] >= width) snake[0][0] = 0;
+            else if (snake[0][1] < 0) snake[0][1] = height - 1;
+            else if (snake[0][1] >= height) snake[0][1] = 0;
+
+            // if the snake head is in the same position as the berry, then eat the berry
+            if (snake[0][0] == berryX && snake[0][1] == berryY){
+                snake[snakeSize][0] = snake[snakeSize - 1][0] - directionVec[0];
+                snake[snakeSize][1] = snake[snakeSize - 1][1] - directionVec[1];
+                snakeSize++;
+                createBerry();
+            }
+
+            // then just move the snake body
+            for (int i = snakeSize - 1; i > 1; i--){
+                snake[i][0] = snake[i-1][0];
+                snake[i][1] = snake[i-1][1];
+            }
+            snake[1][0] = snake[0][0] - directionVec[0];
+            snake[1][1] = snake[0][1] - directionVec[1];
 
             // if the snake head is in the same position as the snake body, then game over
             for (int i = 1; i < snakeSize; i++){
@@ -109,27 +141,6 @@ class Game{
                 }
             }
 
-            // if the snake head is in the same position as the berry, then eat the berry
-            if (snake[0][0] + directionVec[0] == berryX && snake[0][1] + directionVec[1] == berryY){
-                snakeSize++;
-                for (int i = snakeSize; i > 0; i--){
-                    snake[i+1][0] = snake[i][0];
-                    snake[i+1][1] = snake[i][1];
-                }
-                snake[0][0] = berryX;
-                snake[0][1] = berryY;
-                createBerry();
-                delete[] directionVec;
-                return true;
-            }
-
-            // or else, just move the snake body
-            for (int i = snakeSize - 1; i > 0; i--){
-                snake[i][0] = snake[i-1][0];
-                snake[i][1] = snake[i-1][1];
-            }
-            snake[0][0] += directionVec[0];
-            snake[0][1] += directionVec[1];
             delete[] directionVec;
             return true;
         }
@@ -162,6 +173,26 @@ class Game{
             return vec;
         }
 
+        bool changeDirectionTo(int dir){
+            if (dir == 0 && snakeDirection != 2){
+                snakeDirection = 0;
+                return true;
+            }
+            else if (dir == 1 && snakeDirection != 3){
+                snakeDirection = 1;
+                return true;
+            }
+            else if (dir == 2 && snakeDirection != 0){
+                snakeDirection = 2;
+                return true;
+            }
+            else if (dir == 3 && snakeDirection != 1){
+                snakeDirection = 3;
+                return true;
+            }
+            return false;
+        }
+
         void handleEvents(){
             SDL_Event event;
             while(SDL_PollEvent(&event)){
@@ -174,28 +205,28 @@ class Game{
                     switch (event.key.keysym.sym)
                     {
                     case SDLK_LEFT:
-                        snakeDirection = 0;
+                        changeDirectionTo(0);
                         break;
                     case SDLK_a:
-                        snakeDirection = 0;
+                        changeDirectionTo(0);
                         break;
                     case SDLK_UP:
-                        snakeDirection = 1;
+                        changeDirectionTo(1);
                         break;
                     case SDLK_w:
-                        snakeDirection = 1;
+                        changeDirectionTo(1);
                         break;
                     case SDLK_RIGHT:
-                        snakeDirection = 2;
+                        changeDirectionTo(2);
                         break;
                     case SDLK_d:
-                        snakeDirection = 2;
+                        changeDirectionTo(2);
                         break;
                     case SDLK_DOWN:
-                        snakeDirection = 3;
+                        changeDirectionTo(3);
                         break;
                     case SDLK_s:
-                        snakeDirection = 3;
+                        changeDirectionTo(3);
                         break;
                     case SDLK_r:
                         restart = true;
