@@ -2,8 +2,6 @@
 // g++ -I /usr/include/SDL2 -lSDL2 test.cpp -o test
 
 #include <iostream>
-#include <chrono>
-#include <thread>
 #include <SDL.h>
 #include <SDL_image.h>
 #include <SDL_timer.h>
@@ -38,6 +36,7 @@ class Game{
         bool restart;
         bool quit;
         bool pause;
+        bool directionChanged;
 
         SDL_Window* window = nullptr;
         SDL_Renderer* renderer = nullptr;
@@ -111,10 +110,10 @@ class Game{
             snake[0][1] += directionVec[1];
 
             // if the head is over the grid, teleport it to the other side
-            if (snake[0][0] < 0) snake[0][0] = width - 1;
-            else if (snake[0][0] >= width) snake[0][0] = 0;
-            else if (snake[0][1] < 0) snake[0][1] = height - 1;
-            else if (snake[0][1] >= height) snake[0][1] = 0;
+            if (snake[0][0] < -1) snake[0][0] = width - 1;
+            else if (snake[0][0] >= width + 1) snake[0][0] = 0;
+            else if (snake[0][1] < -1) snake[0][1] = height - 1;
+            else if (snake[0][1] >= height + 1) snake[0][1] = 0;
 
             // if the snake head is in the same position as the berry, then eat the berry
             if (snake[0][0] == berryX && snake[0][1] == berryY){
@@ -174,26 +173,32 @@ class Game{
         }
 
         bool changeDirectionTo(int dir){
+            if (directionChanged) return false;
             if (dir == 0 && snakeDirection != 2){
                 snakeDirection = 0;
+                directionChanged = true;
                 return true;
             }
             else if (dir == 1 && snakeDirection != 3){
                 snakeDirection = 1;
+                directionChanged = true;                
                 return true;
             }
             else if (dir == 2 && snakeDirection != 0){
                 snakeDirection = 2;
+                directionChanged = true;
                 return true;
             }
             else if (dir == 3 && snakeDirection != 1){
                 snakeDirection = 3;
+                directionChanged = true;
                 return true;
             }
             return false;
         }
 
         void handleEvents(){
+            directionChanged = false;
             SDL_Event event;
             while(SDL_PollEvent(&event)){
                 switch (event.type)
