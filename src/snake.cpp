@@ -253,10 +253,7 @@ class Game{
 
         void renderGame(){
             
-            if (SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255) != 0)
-            {
-                std::cout << "Set renderer color error: " << SDL_GetError() << std::endl;
-            }
+            SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
             SDL_RenderClear(renderer);
             int x_unit = WINDOW_WIDTH / width;
             int y_unit = WINDOW_HEIGHT / height;
